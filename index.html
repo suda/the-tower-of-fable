@@ -652,25 +652,34 @@ function createBookMaterials(book, color, thickness) {
   const darkMat = new THREE.MeshStandardMaterial({ color: darkerColor, roughness: 0.7, metalness: 0.05 });
   const topMat = new THREE.MeshStandardMaterial({ color: 0xFFFBF2, roughness: 0.9, metalness: 0 }); // page edges
 
-  // Spine texture — on the wide front face (+z), title runs horizontally
-  const spineCanvas = createSpineTexture(book.title || 'Untitled', baseColor);
-  const spineTex = new THREE.CanvasTexture(spineCanvas);
-  spineTex.anisotropy = 4;
-  const spineMat = new THREE.MeshStandardMaterial({ map: spineTex, roughness: 0.6, metalness: 0.05 });
+  // Book lies flat. BoxGeometry(BOOK_WIDTH=14cm, thickness, BOOK_DEPTH=21cm)
+  // Face order: +x(right), -x(left), +y(top), -y(bottom), +z(front), -z(back)
+  // Dimensions of each face:
+  //   +x/-x  → thickness × BOOK_DEPTH  (narrow side edges — page edges)
+  //   +y/-y  → BOOK_WIDTH × BOOK_DEPTH (big flat face — title on top, cover on bottom)
+  //   +z/-z  → BOOK_WIDTH × thickness  (front/back thin edges — page edges)
 
-  // Cover (back, -z) — plain book color
+  // Top face (+y): wide 14×21cm face with title
+  const topCanvas = createTopTexture(book.title || 'Untitled', baseColor);
+  const topTex = new THREE.CanvasTexture(topCanvas);
+  topTex.anisotropy = 4;
+  const topMat = new THREE.MeshStandardMaterial({ map: topTex, roughness: 0.6, metalness: 0.05 });
+
+  // Bottom face (-y): plain book cover color
   const coverMat = new THREE.MeshStandardMaterial({ color: darkerColor, roughness: 0.7, metalness: 0.05 });
 
-  // Page edges — right (+x), left (-x), top (+y)
+  // The three page-edge faces: left (-x), front (+z), back (-z)
+  // Right (+x) is the spine — book color
   const pageEdge = createPageEdgeMaterial();
+  const spineMat = new THREE.MeshStandardMaterial({ color: baseColor, roughness: 0.7, metalness: 0.05 });
 
   return [
-    pageEdge,  // +x right  → page edges
+    spineMat,  // +x right  → spine (book color)
     pageEdge,  // -x left   → page edges
-    pageEdge,  // +y top    → page edges
-    baseMat,   // -y bottom → book color (resting on stack)
-    spineMat,  // +z front  → spine with title
-    coverMat   // -z back   → book cover (plain)
+    topMat,    // +y top    → title face (wide, visible from above)
+    coverMat,  // -y bottom → cover (resting on stack)
+    pageEdge,  // +z front  → page edges
+    pageEdge   // -z back   → page edges
   ];
 }
 
@@ -694,12 +703,12 @@ function createPageEdgeMaterial() {
   return new THREE.MeshStandardMaterial({ map: tex, roughness: 0.9, metalness: 0 });
 }
 
-// Spine texture: wide landscape face (width=BOOK_WIDTH, depth=BOOK_DEPTH in world space)
-// Canvas: 512x256 representing the front cover face (wide & shallow)
-function createSpineTexture(title, color) {
+// Top face texture: 14cm × 21cm face (landscape when viewed from above)
+// Canvas: 420×560 (proportional to 14:21 = 2:3)
+function createTopTexture(title, color) {
   const c = document.createElement('canvas');
-  const w = 512;
-  const h = 256;
+  const w = 420;  // proportional to 14cm
+  const h = 560;  // proportional to 21cm (portrait like a real book cover)
   c.width = w;
   c.height = h;
   const ctx = c.getContext('2d');
@@ -728,11 +737,12 @@ function createSpineTexture(title, color) {
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
 
+  const fontSize = 40;
+  ctx.font = `700 ${fontSize}px Inter, sans-serif`;
   const maxW = w - 60;
   const words = title.split(' ');
   let lines = [];
   let line = '';
-  ctx.font = '600 32px Inter, sans-serif';
   for (const word of words) {
     const test = line ? line + ' ' + word : word;
     if (ctx.measureText(test).width > maxW && line) {
@@ -743,10 +753,10 @@ function createSpineTexture(title, color) {
     }
   }
   if (line) lines.push(line);
-  // Clamp to 3 lines
-  if (lines.length > 3) { lines = lines.slice(0, 3); lines[2] = lines[2].replace(/\s\S+$/, '…'); }
+  // Clamp to 5 lines
+  if (lines.length > 5) { lines = lines.slice(0, 5); lines[4] = lines[4].replace(/\s\S+$/, '…'); }
 
-  const lineH = 38;
+  const lineH = fontSize + 10;
   const totalH = lines.length * lineH;
   const startY = h / 2 - totalH / 2 + lineH / 2;
   lines.forEach((l, i) => ctx.fillText(l, w / 2, startY + i * lineH));
