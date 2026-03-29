@@ -353,19 +353,9 @@
   <div class="tt-meta" id="tt-meta"></div>
 </div>
 
-<script type="importmap">
-{
-  "imports": {
-    "three": "https://cdn.jsdelivr.net/npm/three@0.158.0/build/three.module.js",
-    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.158.0/examples/jsm/"
-  }
-}
-</script>
 
-<script type="module">
-import * as THREE from 'three';
-import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-
+<script>
+// Non-module script: API + UI logic (no imports, always runs)
 const CORS_PROXY = 'https://api.codetabs.com/v1/proxy?quest=';
 const API_BASE = 'https://api.fable.co/api';
 const CURRENT_YEAR = 2026;
@@ -383,10 +373,13 @@ let arHitTestSource = null;
 let arReticle = null;
 let towerPlaced = false;
 
-// Expose to global for onclick handlers
-window.handleBuild = handleBuild;
-window.goBack = goBack;
-window.startAR = startAR;
+// Expose to global for onclick handlers — must happen after module parses
+// Use a try/catch guard so a later runtime error doesn't block button wiring
+try {
+  window.handleBuild = handleBuild;
+  window.goBack = goBack;
+  window.startAR = startAR;
+} catch(e) { console.error('Failed to expose globals', e); }
 
 async function handleBuild() {
   const input = document.getElementById('url-input').value.trim();
@@ -490,9 +483,9 @@ function goBack() {
   bookMeshes = [];
 }
 
-// ─── 3D Tower ───────────────────────────────────────────
+// ─── 3D Tower (loaded via module script below) ──────────
 
-function showTower(books, displayName) {
+async function showTower(books, displayName) {
   document.getElementById('landing').style.display = 'none';
   document.getElementById('tower-view').classList.add('active');
 
@@ -515,10 +508,23 @@ function showTower(books, displayName) {
     });
   }
 
-  initScene(books);
+  // Dynamically import Three.js (module) — keeps main script as plain script
+  try {
+    if (!window.THREE) {
+      window.THREE = await import('https://cdn.jsdelivr.net/npm/three@0.158.0/build/three.module.js');
+      const oc = await import('https://cdn.jsdelivr.net/npm/three@0.158.0/examples/jsm/controls/OrbitControls.js');
+      window.OrbitControls = oc.OrbitControls;
+    }
+    initScene(books);
+  } catch(e) {
+    console.error('Failed to load Three.js:', e);
+    document.getElementById('canvas-container').innerHTML = '<p style="padding:2rem;color:red">Failed to load 3D engine: ' + e.message + '</p>';
+  }
 }
 
 function initScene(books) {
+  const THREE = window.THREE;
+  const OrbitControls = window.OrbitControls;
   const container = document.getElementById('canvas-container');
   container.innerHTML = '';
 
@@ -642,6 +648,7 @@ function initScene(books) {
 }
 
 function createBookMaterials(book, color, thickness) {
+  const THREE = window.THREE;
   // 6 faces: +x, -x, +y, -y, +z, -z
   // For a box: right, left, top, bottom, front, back
   const baseColor = new THREE.Color(color);
@@ -684,6 +691,7 @@ function createBookMaterials(book, color, thickness) {
 }
 
 function createPageEdgeMaterial() {
+  const THREE = window.THREE;
   const c = document.createElement('canvas');
   c.width = 128;
   c.height = 32;
@@ -821,6 +829,7 @@ function animate() {
 // ─── WebXR AR ───────────────────────────────────────────
 
 async function startAR() {
+  const THREE = window.THREE;
   if (!navigator.xr) return;
 
   try {
@@ -887,6 +896,7 @@ function arAnimate(timestamp, frame) {
 }
 
 function onARSelect() {
+  const THREE = window.THREE;
   if (towerPlaced || !arReticle.visible) return;
 
   // Place tower at reticle position
@@ -922,6 +932,11 @@ function onAREnd() {
 // Enter on input
 document.getElementById('url-input').addEventListener('keydown', e => {
   if (e.key === 'Enter') handleBuild();
+});
+
+// Global error handler to catch any module load failures
+window.addEventListener('error', e => {
+  console.error('Global error:', e.message, e.filename, e.lineno);
 });
 </script>
 
