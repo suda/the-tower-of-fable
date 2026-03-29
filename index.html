@@ -1,0 +1,903 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Tower of Fable</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=Inter:wght@400;500;600&display=swap');
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    --purple: #6B4C9A;
+    --purple-dark: #4A3470;
+    --purple-light: #9B7FCA;
+    --cream: #FDF6EC;
+    --cream-dark: #F5E6D0;
+    --gold: #D4A843;
+    --text: #2D2040;
+  }
+
+  body {
+    font-family: 'Inter', sans-serif;
+    background: var(--cream);
+    color: var(--text);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  .landing {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    padding: 2rem;
+    text-align: center;
+    position: relative;
+  }
+
+  .landing::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: radial-gradient(ellipse at 50% 0%, rgba(107,76,154,0.08) 0%, transparent 70%);
+    pointer-events: none;
+  }
+
+  .logo {
+    font-family: 'Playfair Display', serif;
+    font-size: 3.5rem;
+    font-weight: 700;
+    color: var(--purple);
+    margin-bottom: 0.25rem;
+    letter-spacing: -0.02em;
+  }
+
+  .logo span {
+    color: var(--gold);
+  }
+
+  .subtitle {
+    font-size: 1.1rem;
+    color: var(--purple-light);
+    margin-bottom: 2.5rem;
+    font-weight: 500;
+  }
+
+  .input-group {
+    display: flex;
+    gap: 0.75rem;
+    max-width: 560px;
+    width: 100%;
+    margin-bottom: 1rem;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  .input-group input {
+    flex: 1;
+    min-width: 280px;
+    padding: 0.9rem 1.2rem;
+    border: 2px solid var(--cream-dark);
+    border-radius: 12px;
+    font-size: 1rem;
+    font-family: 'Inter', sans-serif;
+    background: white;
+    color: var(--text);
+    transition: border-color 0.2s;
+    outline: none;
+  }
+
+  .input-group input:focus {
+    border-color: var(--purple-light);
+  }
+
+  .input-group input::placeholder {
+    color: #B8A8C8;
+  }
+
+  .btn {
+    padding: 0.9rem 2rem;
+    border: none;
+    border-radius: 12px;
+    font-size: 1rem;
+    font-weight: 600;
+    font-family: 'Inter', sans-serif;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .btn-primary {
+    background: var(--purple);
+    color: white;
+  }
+
+  .btn-primary:hover {
+    background: var(--purple-dark);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 16px rgba(107,76,154,0.3);
+  }
+
+  .btn-primary:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+  }
+
+  .btn-ar {
+    background: var(--gold);
+    color: white;
+    margin-top: 0.75rem;
+  }
+
+  .btn-ar:hover {
+    background: #C09530;
+  }
+
+  .error {
+    color: #C04040;
+    font-size: 0.9rem;
+    margin-top: 0.5rem;
+    min-height: 1.4em;
+  }
+
+  .hint {
+    font-size: 0.85rem;
+    color: #A090B0;
+    margin-top: 0.5rem;
+  }
+
+  /* Loading */
+  .loading-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(253,246,236,0.92);
+    z-index: 100;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 1.5rem;
+  }
+
+  .loading-overlay.active {
+    display: flex;
+  }
+
+  .spinner {
+    width: 48px;
+    height: 48px;
+    border: 4px solid var(--cream-dark);
+    border-top-color: var(--purple);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+
+  @keyframes spin {
+    to { transform: rotate(360deg); }
+  }
+
+  .loading-text {
+    font-size: 1.1rem;
+    color: var(--purple);
+    font-weight: 500;
+  }
+
+  /* Tower view */
+  .tower-view {
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    min-height: 100vh;
+  }
+
+  .tower-view.active {
+    display: flex;
+  }
+
+  .tower-header {
+    padding: 1.5rem 2rem;
+    text-align: center;
+    width: 100%;
+    background: white;
+    border-bottom: 1px solid var(--cream-dark);
+    position: relative;
+    z-index: 10;
+  }
+
+  .tower-header h2 {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.6rem;
+    color: var(--purple);
+    margin-bottom: 0.25rem;
+  }
+
+  .tower-stats {
+    display: flex;
+    gap: 2rem;
+    justify-content: center;
+    margin-top: 0.5rem;
+    flex-wrap: wrap;
+  }
+
+  .stat {
+    font-size: 0.95rem;
+    color: var(--text);
+  }
+
+  .stat strong {
+    color: var(--purple);
+    font-weight: 700;
+  }
+
+  .tower-actions {
+    display: flex;
+    gap: 0.75rem;
+    margin-top: 0.75rem;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  .btn-sm {
+    padding: 0.6rem 1.4rem;
+    font-size: 0.9rem;
+    border-radius: 10px;
+  }
+
+  .btn-outline {
+    background: transparent;
+    color: var(--purple);
+    border: 2px solid var(--purple);
+  }
+
+  .btn-outline:hover {
+    background: var(--purple);
+    color: white;
+  }
+
+  #canvas-container {
+    flex: 1;
+    width: 100%;
+    position: relative;
+    min-height: 500px;
+  }
+
+  #canvas-container canvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+  }
+
+  .book-tooltip {
+    display: none;
+    position: fixed;
+    background: white;
+    border-radius: 10px;
+    padding: 0.75rem 1rem;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.12);
+    font-size: 0.85rem;
+    max-width: 260px;
+    z-index: 50;
+    pointer-events: none;
+    border: 1px solid var(--cream-dark);
+  }
+
+  .book-tooltip .tt-title {
+    font-weight: 600;
+    color: var(--purple);
+    margin-bottom: 0.2rem;
+  }
+
+  .book-tooltip .tt-author {
+    color: #777;
+    font-size: 0.8rem;
+  }
+
+  .book-tooltip .tt-meta {
+    margin-top: 0.3rem;
+    color: #999;
+    font-size: 0.78rem;
+  }
+
+  @media (max-width: 600px) {
+    .logo { font-size: 2.4rem; }
+    .input-group { flex-direction: column; }
+    .input-group input { min-width: 0; }
+  }
+</style>
+</head>
+<body>
+
+<!-- Landing -->
+<div class="landing" id="landing">
+  <h1 class="logo">The Tower of <span>Fable</span></h1>
+  <p class="subtitle">See your reading year rise, one book at a time.</p>
+  <div class="input-group">
+    <input type="text" id="url-input" placeholder="https://fable.co/fabler/your-profile" />
+    <button class="btn btn-primary" id="build-btn" onclick="handleBuild()">Build My Tower</button>
+  </div>
+  <p class="hint">Paste your Fable.co profile URL</p>
+  <p class="error" id="error-msg"></p>
+</div>
+
+<!-- Loading -->
+<div class="loading-overlay" id="loading">
+  <div class="spinner"></div>
+  <p class="loading-text" id="loading-text">Fetching your books…</p>
+</div>
+
+<!-- Tower -->
+<div class="tower-view" id="tower-view">
+  <div class="tower-header">
+    <h2 id="tower-title"></h2>
+    <div class="tower-stats">
+      <span class="stat"><strong id="book-count">0</strong> books</span>
+      <span class="stat"><strong id="page-count">0</strong> pages</span>
+      <span class="stat">Tower height: <strong id="tower-height">0</strong></span>
+    </div>
+    <div class="tower-actions">
+      <button class="btn btn-sm btn-outline" onclick="goBack()">← New Search</button>
+      <button class="btn btn-sm btn-primary btn-ar" id="ar-btn" onclick="startAR()" style="display:none;">Enter AR</button>
+    </div>
+  </div>
+  <div id="canvas-container"></div>
+</div>
+
+<!-- Tooltip -->
+<div class="book-tooltip" id="tooltip">
+  <div class="tt-title" id="tt-title"></div>
+  <div class="tt-author" id="tt-author"></div>
+  <div class="tt-meta" id="tt-meta"></div>
+</div>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.158.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.158.0/examples/jsm/"
+  }
+}
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+const CORS_PROXY = 'https://corsproxy.io/?';
+const API_BASE = 'https://api.fable.co/api';
+const CURRENT_YEAR = 2026;
+
+// Book dimensions in meters (scene units)
+const BOOK_WIDTH = 0.14;   // 14cm
+const BOOK_DEPTH = 0.21;   // 21cm
+const MIN_THICKNESS = 0.01; // minimum height per book
+
+let scene, camera, renderer, controls, raycaster, mouse;
+let bookMeshes = [];
+let towerGroup;
+let currentXRSession = null;
+let arHitTestSource = null;
+let arReticle = null;
+let towerPlaced = false;
+
+// Expose to global for onclick handlers
+window.handleBuild = handleBuild;
+window.goBack = goBack;
+window.startAR = startAR;
+
+async function handleBuild() {
+  const input = document.getElementById('url-input').value.trim();
+  const errEl = document.getElementById('error-msg');
+  errEl.textContent = '';
+
+  const slug = extractSlug(input);
+  if (!slug) {
+    errEl.textContent = 'Please enter a valid Fable profile URL (e.g. https://fable.co/fabler/your-name-123)';
+    return;
+  }
+
+  const btn = document.getElementById('build-btn');
+  btn.disabled = true;
+  showLoading('Fetching your profile…');
+
+  try {
+    // 1. Get user UUID
+    const userData = await apiFetch(`/usernames/${slug}`);
+    if (!userData || !userData.id) throw new Error('Profile not found. Make sure the URL is correct and the profile is public.');
+
+    const uuid = userData.id;
+    const displayName = userData.display_name || slug.split('-')[0];
+
+    showLoading('Loading your book lists…');
+
+    // 2. Get book lists
+    const listsData = await apiFetch(`/v2/users/${uuid}/book_lists/`);
+    const finishedList = (listsData.results || listsData || []).find(l => l.system_type === 'finished');
+    if (!finishedList) throw new Error('No "Finished" book list found on this profile.');
+
+    showLoading('Loading your books…');
+
+    // 3. Get books from finished list
+    const booksData = await apiFetch(`/v2/users/${uuid}/book_lists/${finishedList.id}/books?limit=100&with_ratings=true`);
+    const allBooks = booksData.results || booksData || [];
+
+    // 4. Filter to current year
+    const books = allBooks.filter(b => {
+      if (!b.finished_reading_at) return false;
+      return new Date(b.finished_reading_at).getFullYear() === CURRENT_YEAR;
+    });
+
+    if (books.length === 0) throw new Error(`No books finished in ${CURRENT_YEAR} found. Try a different profile or check back later!`);
+
+    // Sort by finished date
+    books.sort((a, b) => new Date(a.finished_reading_at) - new Date(b.finished_reading_at));
+
+    hideLoading();
+    showTower(books, displayName);
+
+  } catch (err) {
+    hideLoading();
+    errEl.textContent = err.message || 'Something went wrong. Please try again.';
+    console.error(err);
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+function extractSlug(input) {
+  if (!input) return null;
+  // Direct slug
+  if (/^[\w-]+$/.test(input)) return input;
+  // URL
+  const m = input.match(/fable\.co\/fabler\/([\w-]+)/);
+  return m ? m[1] : null;
+}
+
+async function apiFetch(path) {
+  const url = `${CORS_PROXY}${encodeURIComponent(API_BASE + path)}`;
+  const res = await fetch(url);
+  if (!res.ok) {
+    if (res.status === 404) throw new Error('Profile not found.');
+    throw new Error(`API error: ${res.status}`);
+  }
+  return res.json();
+}
+
+function showLoading(text) {
+  document.getElementById('loading-text').textContent = text;
+  document.getElementById('loading').classList.add('active');
+}
+
+function hideLoading() {
+  document.getElementById('loading').classList.remove('active');
+}
+
+function goBack() {
+  document.getElementById('tower-view').classList.remove('active');
+  document.getElementById('landing').style.display = '';
+  if (renderer) {
+    renderer.dispose();
+    renderer = null;
+  }
+  bookMeshes = [];
+}
+
+// ─── 3D Tower ───────────────────────────────────────────
+
+function showTower(books, displayName) {
+  document.getElementById('landing').style.display = 'none';
+  document.getElementById('tower-view').classList.add('active');
+
+  const totalPages = books.reduce((s, b) => s + (b.book?.page_count || 250), 0);
+  const towerHeightUnits = books.reduce((s, b) => {
+    const pages = b.book?.page_count || 250;
+    return s + Math.max(0.01, pages / 1000);
+  }, 0);
+  const towerHeightCm = Math.round(towerHeightUnits * 100);
+
+  document.getElementById('tower-title').textContent = `${displayName} read ${books.length} books in ${CURRENT_YEAR}`;
+  document.getElementById('book-count').textContent = books.length;
+  document.getElementById('page-count').textContent = totalPages.toLocaleString();
+  document.getElementById('tower-height').textContent = `${towerHeightCm}cm`;
+
+  // Check AR support
+  if (navigator.xr) {
+    navigator.xr.isSessionSupported('immersive-ar').then(supported => {
+      if (supported) document.getElementById('ar-btn').style.display = '';
+    });
+  }
+
+  initScene(books);
+}
+
+function initScene(books) {
+  const container = document.getElementById('canvas-container');
+  container.innerHTML = '';
+
+  scene = new THREE.Scene();
+  scene.background = new THREE.Color(0xFDF6EC);
+
+  camera = new THREE.PerspectiveCamera(50, container.clientWidth / container.clientHeight, 0.01, 100);
+
+  renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.setSize(container.clientWidth, container.clientHeight);
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  renderer.xr.enabled = true;
+  container.appendChild(renderer.domElement);
+
+  // Lighting
+  const ambient = new THREE.AmbientLight(0xffffff, 0.6);
+  scene.add(ambient);
+
+  const dirLight = new THREE.DirectionalLight(0xffffff, 1.0);
+  dirLight.position.set(0.5, 1.5, 0.8);
+  dirLight.castShadow = true;
+  dirLight.shadow.mapSize.set(1024, 1024);
+  dirLight.shadow.camera.near = 0.1;
+  dirLight.shadow.camera.far = 10;
+  dirLight.shadow.camera.left = -1;
+  dirLight.shadow.camera.right = 1;
+  dirLight.shadow.camera.top = 1;
+  dirLight.shadow.camera.bottom = -1;
+  scene.add(dirLight);
+
+  const fillLight = new THREE.DirectionalLight(0xB8A0D8, 0.3);
+  fillLight.position.set(-1, 0.5, -0.5);
+  scene.add(fillLight);
+
+  // Floor
+  const floorGeo = new THREE.CircleGeometry(0.6, 64);
+  const floorMat = new THREE.MeshStandardMaterial({
+    color: 0xE8DDD0,
+    roughness: 0.9,
+    metalness: 0
+  });
+  const floor = new THREE.Mesh(floorGeo, floorMat);
+  floor.rotation.x = -Math.PI / 2;
+  floor.receiveShadow = true;
+  scene.add(floor);
+
+  // Build tower
+  towerGroup = new THREE.Group();
+  scene.add(towerGroup);
+  bookMeshes = [];
+
+  let yOffset = 0;
+
+  books.forEach((entry, i) => {
+    const book = entry.book || {};
+    const pages = book.page_count || 250;
+    const thickness = Math.max(MIN_THICKNESS, pages / 1000);
+    const color = parseBookColor(book.background_color);
+
+    // Slightly randomize rotation for realism
+    const rotJitter = (Math.random() - 0.5) * 0.06;
+    const posJitter = (Math.random() - 0.5) * 0.005;
+
+    const geo = new THREE.BoxGeometry(BOOK_WIDTH, thickness, BOOK_DEPTH);
+
+    // Create materials for each face
+    const materials = createBookMaterials(book, color, thickness);
+
+    const mesh = new THREE.Mesh(geo, materials);
+    mesh.position.set(posJitter, yOffset + thickness / 2, posJitter);
+    mesh.rotation.y = rotJitter;
+    mesh.castShadow = true;
+    mesh.receiveShadow = true;
+
+    mesh.userData = {
+      title: book.title || 'Unknown',
+      authors: (book.authors || []).map(a => a.name || a).join(', ') || 'Unknown author',
+      pages: pages,
+      rating: entry.user_rating,
+      finishedAt: entry.finished_reading_at,
+      index: i
+    };
+
+    towerGroup.add(mesh);
+    bookMeshes.push(mesh);
+
+    yOffset += thickness;
+  });
+
+  // Center tower
+  const totalHeight = yOffset;
+
+  // Camera position
+  const dist = Math.max(0.5, totalHeight * 1.2);
+  camera.position.set(0.3, totalHeight * 0.5, dist);
+
+  // Controls
+  controls = new OrbitControls(camera, renderer.domElement);
+  controls.target.set(0, totalHeight * 0.4, 0);
+  controls.enableDamping = true;
+  controls.dampingFactor = 0.08;
+  controls.minDistance = 0.15;
+  controls.maxDistance = 3;
+  controls.update();
+
+  // Raycaster for hover
+  raycaster = new THREE.Raycaster();
+  mouse = new THREE.Vector2();
+
+  renderer.domElement.addEventListener('pointermove', onPointerMove);
+  renderer.domElement.addEventListener('pointerleave', () => {
+    document.getElementById('tooltip').style.display = 'none';
+  });
+
+  window.addEventListener('resize', onResize);
+
+  // Animate
+  renderer.setAnimationLoop(animate);
+}
+
+function createBookMaterials(book, color, thickness) {
+  // 6 faces: +x, -x, +y, -y, +z, -z
+  // For a box: right, left, top, bottom, front, back
+  const baseColor = new THREE.Color(color);
+  const darkerColor = baseColor.clone().multiplyScalar(0.8);
+  const lighterColor = baseColor.clone().lerp(new THREE.Color(0xffffff), 0.15);
+
+  const baseMat = new THREE.MeshStandardMaterial({ color: baseColor, roughness: 0.7, metalness: 0.05 });
+  const darkMat = new THREE.MeshStandardMaterial({ color: darkerColor, roughness: 0.7, metalness: 0.05 });
+  const topMat = new THREE.MeshStandardMaterial({ color: 0xFFFBF2, roughness: 0.9, metalness: 0 }); // page edges
+
+  // Spine texture (front face, -z)
+  const spineCanvas = createSpineTexture(book.title || 'Untitled', thickness, baseColor);
+  const spineTex = new THREE.CanvasTexture(spineCanvas);
+  spineTex.anisotropy = 4;
+  const spineMat = new THREE.MeshStandardMaterial({ map: spineTex, roughness: 0.6, metalness: 0.05 });
+
+  return [
+    darkMat,   // +x right (page edges)
+    createPageEdgeMaterial(), // -x left (page edges)
+    baseMat,   // +y top
+    baseMat,   // -y bottom
+    spineMat,  // +z front (spine)
+    darkMat    // -z back
+  ];
+}
+
+function createPageEdgeMaterial() {
+  const c = document.createElement('canvas');
+  c.width = 128;
+  c.height = 32;
+  const ctx = c.getContext('2d');
+  ctx.fillStyle = '#FFF8EE';
+  ctx.fillRect(0, 0, 128, 32);
+  // Subtle line pattern for pages
+  ctx.strokeStyle = '#E8E0D0';
+  ctx.lineWidth = 0.5;
+  for (let i = 0; i < 32; i += 1.5) {
+    ctx.beginPath();
+    ctx.moveTo(0, i);
+    ctx.lineTo(128, i);
+    ctx.stroke();
+  }
+  const tex = new THREE.CanvasTexture(c);
+  return new THREE.MeshStandardMaterial({ map: tex, roughness: 0.9, metalness: 0 });
+}
+
+function createSpineTexture(title, thickness, color) {
+  const c = document.createElement('canvas');
+  const w = 512;
+  const h = Math.max(64, Math.round((thickness / BOOK_WIDTH) * 512));
+  c.width = w;
+  c.height = h;
+  const ctx = c.getContext('2d');
+
+  // Background
+  const hex = '#' + color.getHexString();
+  ctx.fillStyle = hex;
+  ctx.fillRect(0, 0, w, h);
+
+  // Subtle gradient overlay
+  const grad = ctx.createLinearGradient(0, 0, 0, h);
+  grad.addColorStop(0, 'rgba(255,255,255,0.08)');
+  grad.addColorStop(1, 'rgba(0,0,0,0.08)');
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, w, h);
+
+  // Decorative lines
+  ctx.strokeStyle = 'rgba(255,255,255,0.15)';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(20, 6);
+  ctx.lineTo(w - 20, 6);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(20, h - 6);
+  ctx.lineTo(w - 20, h - 6);
+  ctx.stroke();
+
+  // Title text
+  const brightness = color.r * 0.299 + color.g * 0.587 + color.b * 0.114;
+  ctx.fillStyle = brightness > 0.55 ? '#1A1028' : '#FFFFFF';
+  const fontSize = Math.min(Math.max(12, h * 0.5), 36);
+  ctx.font = `600 ${fontSize}px Inter, sans-serif`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+
+  // Truncate title if needed
+  let displayTitle = title;
+  const maxW = w - 40;
+  if (ctx.measureText(displayTitle).width > maxW) {
+    while (ctx.measureText(displayTitle + '…').width > maxW && displayTitle.length > 0) {
+      displayTitle = displayTitle.slice(0, -1);
+    }
+    displayTitle += '…';
+  }
+
+  ctx.fillText(displayTitle, w / 2, h / 2);
+
+  return c;
+}
+
+function parseBookColor(bgColor) {
+  if (!bgColor) {
+    // Random pleasant book color
+    const palette = [0x6B4C9A, 0x9B7FCA, 0x4A7B6F, 0xC04040, 0xD4A843, 0x3B6B8F, 0x8B5E3C, 0x5C4A72, 0xA05050, 0x2F6B5E];
+    return palette[Math.floor(Math.random() * palette.length)];
+  }
+  if (typeof bgColor === 'string') {
+    if (bgColor.startsWith('#')) return parseInt(bgColor.slice(1), 16);
+    if (bgColor.startsWith('rgb')) {
+      const m = bgColor.match(/(\d+)/g);
+      if (m && m.length >= 3) return (parseInt(m[0]) << 16) | (parseInt(m[1]) << 8) | parseInt(m[2]);
+    }
+    return parseInt(bgColor, 16) || 0x6B4C9A;
+  }
+  return bgColor;
+}
+
+function onPointerMove(event) {
+  const rect = renderer.domElement.getBoundingClientRect();
+  mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+  mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+
+  raycaster.setFromCamera(mouse, camera);
+  const intersects = raycaster.intersectObjects(bookMeshes);
+
+  const tooltip = document.getElementById('tooltip');
+  if (intersects.length > 0) {
+    const data = intersects[0].object.userData;
+    document.getElementById('tt-title').textContent = data.title;
+    document.getElementById('tt-author').textContent = data.authors;
+    const ratingStr = data.rating ? `★ ${data.rating}/5` : '';
+    const dateStr = data.finishedAt ? new Date(data.finishedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '';
+    document.getElementById('tt-meta').textContent = `${data.pages} pages ${ratingStr} ${dateStr}`.trim();
+    tooltip.style.display = 'block';
+    tooltip.style.left = (event.clientX + 16) + 'px';
+    tooltip.style.top = (event.clientY - 10) + 'px';
+  } else {
+    tooltip.style.display = 'none';
+  }
+}
+
+function onResize() {
+  const container = document.getElementById('canvas-container');
+  if (!container || !renderer) return;
+  camera.aspect = container.clientWidth / container.clientHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(container.clientWidth, container.clientHeight);
+}
+
+function animate() {
+  if (controls) controls.update();
+  renderer.render(scene, camera);
+}
+
+// ─── WebXR AR ───────────────────────────────────────────
+
+async function startAR() {
+  if (!navigator.xr) return;
+
+  try {
+    const session = await navigator.xr.requestSession('immersive-ar', {
+      requiredFeatures: ['hit-test'],
+      optionalFeatures: ['dom-overlay'],
+    });
+
+    currentXRSession = session;
+    towerPlaced = false;
+
+    renderer.xr.setReferenceSpaceType('local');
+    await renderer.xr.setSession(session);
+
+    scene.background = null;
+
+    // Hide floor in AR
+    scene.children.forEach(c => {
+      if (c.type === 'Mesh' && c.geometry.type === 'CircleGeometry') c.visible = false;
+    });
+
+    // Reticle for placement
+    const ringGeo = new THREE.RingGeometry(0.04, 0.05, 32).rotateX(-Math.PI / 2);
+    const ringMat = new THREE.MeshBasicMaterial({ color: 0x6B4C9A });
+    arReticle = new THREE.Mesh(ringGeo, ringMat);
+    arReticle.matrixAutoUpdate = false;
+    arReticle.visible = false;
+    scene.add(arReticle);
+
+    towerGroup.visible = false;
+
+    // Hit test source
+    const refSpace = await session.requestReferenceSpace('viewer');
+    arHitTestSource = await session.requestHitTestSource({ space: refSpace });
+
+    session.addEventListener('select', onARSelect);
+    session.addEventListener('end', onAREnd);
+
+    renderer.setAnimationLoop(arAnimate);
+
+  } catch (err) {
+    console.error('AR session failed:', err);
+  }
+}
+
+function arAnimate(timestamp, frame) {
+  if (!frame || !currentXRSession) return;
+
+  if (arHitTestSource && !towerPlaced) {
+    const refSpace = renderer.xr.getReferenceSpace();
+    const hitResults = frame.getHitTestResults(arHitTestSource);
+
+    if (hitResults.length > 0) {
+      const hit = hitResults[0];
+      const pose = hit.getPose(refSpace);
+      arReticle.visible = true;
+      arReticle.matrix.fromArray(pose.transform.matrix);
+    } else {
+      arReticle.visible = false;
+    }
+  }
+
+  renderer.render(scene, camera);
+}
+
+function onARSelect() {
+  if (towerPlaced || !arReticle.visible) return;
+
+  // Place tower at reticle position
+  const pos = new THREE.Vector3();
+  pos.setFromMatrixPosition(arReticle.matrix);
+  towerGroup.position.copy(pos);
+  towerGroup.visible = true;
+  towerPlaced = true;
+  arReticle.visible = false;
+}
+
+function onAREnd() {
+  currentXRSession = null;
+  arHitTestSource = null;
+  towerPlaced = false;
+
+  if (arReticle) {
+    scene.remove(arReticle);
+    arReticle = null;
+  }
+
+  scene.background = new THREE.Color(0xFDF6EC);
+  scene.children.forEach(c => {
+    if (c.type === 'Mesh' && c.geometry.type === 'CircleGeometry') c.visible = true;
+  });
+
+  towerGroup.position.set(0, 0, 0);
+  towerGroup.visible = true;
+
+  renderer.setAnimationLoop(animate);
+}
+
+// Enter on input
+document.getElementById('url-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter') handleBuild();
+});
+</script>
+
+</body>
+</html>
