@@ -373,7 +373,7 @@ const CURRENT_YEAR = 2026;
 // Book dimensions in meters (scene units)
 const BOOK_WIDTH = 0.14;   // 14cm
 const BOOK_DEPTH = 0.21;   // 21cm
-const MIN_THICKNESS = 0.008; // minimum height per book (~8mm)
+const MIN_THICKNESS = 0.005; // minimum height per book (5mm)
 
 let scene, camera, renderer, controls, raycaster, mouse;
 let bookMeshes = [];
@@ -499,7 +499,7 @@ function showTower(books, displayName) {
   const totalPages = books.reduce((s, b) => s + (b.book?.page_count || 250), 0);
   const towerHeightUnits = books.reduce((s, b) => {
     const pages = b.book?.page_count || 250;
-    return s + Math.max(0.008, pages / 2000);
+    return s + Math.max(0.005, pages / 20000);
   }, 0);
   const towerHeightCm = Math.round(towerHeightUnits * 100);
 
@@ -577,7 +577,7 @@ function initScene(books) {
   books.forEach((entry, i) => {
     const book = entry.book || {};
     const pages = book.page_count || 250;
-    const thickness = Math.max(MIN_THICKNESS, pages / 2000); // 0.05mm/page → 300p = 15mm
+    const thickness = Math.max(MIN_THICKNESS, pages / 20000); // 0.05mm/page = 0.00005m → 300p = 15mm = 0.015m
     const color = parseBookColor(book.background_color);
 
     // Slightly randomize rotation for realism
