@@ -426,14 +426,19 @@ async function handleBuild() {
 
     // 4. Filter to current year
     const books = allBooks.filter(b => {
-      if (!b.finished_reading_at) return false;
-      return new Date(b.finished_reading_at).getFullYear() === CURRENT_YEAR;
+      const date = b.book?.finished_reading_at || b.finished_reading_at;
+      if (!date) return false;
+      return new Date(date).getFullYear() === CURRENT_YEAR;
     });
 
     if (books.length === 0) throw new Error(`No books finished in ${CURRENT_YEAR} found. Try a different profile or check back later!`);
 
     // Sort by finished date
-    books.sort((a, b) => new Date(a.finished_reading_at) - new Date(b.finished_reading_at));
+    books.sort((a, b) => {
+      const da = a.book?.finished_reading_at || a.finished_reading_at;
+      const db = b.book?.finished_reading_at || b.finished_reading_at;
+      return new Date(da) - new Date(db);
+    });
 
     hideLoading();
     showTower(books, displayName);
@@ -595,7 +600,7 @@ function initScene(books) {
       authors: (book.authors || []).map(a => a.name || a).join(', ') || 'Unknown author',
       pages: pages,
       rating: entry.user_rating,
-      finishedAt: entry.finished_reading_at,
+      finishedAt: book.finished_reading_at || entry.finished_reading_at,
       index: i
     };
 
