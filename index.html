@@ -340,7 +340,7 @@
     </div>
     <div class="tower-actions">
       <button class="btn btn-sm btn-outline" onclick="goBack()">← New Search</button>
-      <button class="btn btn-sm btn-primary btn-ar" id="ar-btn" onclick="startAR()" style="display:none;">Enter AR</button>
+      <button class="btn btn-sm btn-primary btn-ar" id="ar-btn" onclick="startAR()" style="display:none;">📱 View in AR</button>
     </div>
   </div>
   <div id="canvas-container"></div>
@@ -376,10 +376,7 @@ const MIN_THICKNESS = 0.005; // minimum height per book (5mm)
 let scene, camera, renderer, controls, raycaster, mouse;
 let bookMeshes = [];
 let towerGroup;
-let currentXRSession = null;
-let arHitTestSource = null;
-let arReticle = null;
-let towerPlaced = false;
+
 
 // Expose to global for onclick handlers — must happen after module parses
 // Use a try/catch guard so a later runtime error doesn't block button wiring
@@ -509,11 +506,11 @@ async function showTower(books, displayName) {
   document.getElementById('page-count').textContent = totalPages.toLocaleString();
   document.getElementById('tower-height').textContent = `${towerHeightCm}cm`;
 
-  // Check AR support
-  if (navigator.xr) {
-    navigator.xr.isSessionSupported('immersive-ar').then(supported => {
-      if (supported) document.getElementById('ar-btn').style.display = '';
-    });
+  // Show AR button on iOS Safari (Quick Look) or Android (Scene Viewer)
+  const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+  const isAndroid = /android/i.test(navigator.userAgent);
+  if (isIOS || isAndroid) {
+    document.getElementById('ar-btn').style.display = '';
   }
 
   // Dynamically import Three.js (module) — keeps main script as plain script
@@ -546,7 +543,6 @@ function initScene(books) {
   renderer.setSize(container.clientWidth, container.clientHeight);
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-  renderer.xr.enabled = true;
   container.appendChild(renderer.domElement);
 
   // Lighting
@@ -832,107 +828,74 @@ function animate() {
   renderer.render(scene, camera);
 }
 
-// ─── WebXR AR ───────────────────────────────────────────
+// ─── AR via GLTFExporter + model-viewer (iOS Quick Look / Android Scene Viewer) ──
 
 async function startAR() {
-  const THREE = window.THREE;
-  if (!navigator.xr) return;
+  const btn = document.getElementById('ar-btn');
+  const origText = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = 'Preparing AR…';
 
   try {
-    const session = await navigator.xr.requestSession('immersive-ar', {
-      requiredFeatures: ['hit-test'],
-      optionalFeatures: ['dom-overlay'],
+    // Dynamically load GLTFExporter
+    const { GLTFExporter } = await import('https://cdn.jsdelivr.net/npm/three@0.158.0/examples/jsm/exporters/GLTFExporter.js');
+
+    // Export the tower group to GLB
+    const exporter = new GLTFExporter();
+    const glb = await new Promise((resolve, reject) => {
+      exporter.parse(towerGroup, resolve, reject, { binary: true });
     });
 
-    currentXRSession = session;
-    towerPlaced = false;
+    const blob = new Blob([glb], { type: 'model/gltf-binary' });
+    const glbUrl = URL.createObjectURL(blob);
 
-    renderer.xr.setReferenceSpaceType('local');
-    await renderer.xr.setSession(session);
+    // Inject model-viewer if not already present
+    if (!customElements.get('model-viewer')) {
+      await new Promise((resolve, reject) => {
+        const s = document.createElement('script');
+        s.type = 'module';
+        s.src = 'https://ajax.googleapis.com/ajax/libs/model-viewer/3.4.0/model-viewer.min.js';
+        s.onload = resolve;
+        s.onerror = reject;
+        document.head.appendChild(s);
+      });
+      // Give it a tick to register
+      await new Promise(r => setTimeout(r, 100));
+    }
 
-    scene.background = null;
+    // Create/update model-viewer element
+    let mv = document.getElementById('mv-ar');
+    if (!mv) {
+      mv = document.createElement('model-viewer');
+      mv.id = 'mv-ar';
+      mv.setAttribute('ar', '');
+      mv.setAttribute('ar-modes', 'quick-look scene-viewer webxr');
+      mv.setAttribute('camera-controls', '');
+      mv.setAttribute('auto-rotate', '');
+      mv.setAttribute('style', 'display:none;width:1px;height:1px;position:absolute;');
+      document.body.appendChild(mv);
+    }
 
-    // Hide floor in AR
-    scene.children.forEach(c => {
-      if (c.type === 'Mesh' && c.geometry.type === 'CircleGeometry') c.visible = false;
+    mv.src = glbUrl;
+
+    // Wait for model-viewer to load the model, then trigger AR
+    await new Promise((resolve) => {
+      const onLoad = () => { mv.removeEventListener('load', onLoad); resolve(); };
+      if (mv.loaded) resolve();
+      else mv.addEventListener('load', onLoad);
+      // Timeout fallback
+      setTimeout(resolve, 3000);
     });
 
-    // Reticle for placement
-    const ringGeo = new THREE.RingGeometry(0.04, 0.05, 32).rotateX(-Math.PI / 2);
-    const ringMat = new THREE.MeshBasicMaterial({ color: 0x6B4C9A });
-    arReticle = new THREE.Mesh(ringGeo, ringMat);
-    arReticle.matrixAutoUpdate = false;
-    arReticle.visible = false;
-    scene.add(arReticle);
-
-    towerGroup.visible = false;
-
-    // Hit test source
-    const refSpace = await session.requestReferenceSpace('viewer');
-    arHitTestSource = await session.requestHitTestSource({ space: refSpace });
-
-    session.addEventListener('select', onARSelect);
-    session.addEventListener('end', onAREnd);
-
-    renderer.setAnimationLoop(arAnimate);
+    mv.activateAR();
 
   } catch (err) {
-    console.error('AR session failed:', err);
+    console.error('AR failed:', err);
+    alert('AR failed: ' + err.message);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = origText;
   }
-}
-
-function arAnimate(timestamp, frame) {
-  if (!frame || !currentXRSession) return;
-
-  if (arHitTestSource && !towerPlaced) {
-    const refSpace = renderer.xr.getReferenceSpace();
-    const hitResults = frame.getHitTestResults(arHitTestSource);
-
-    if (hitResults.length > 0) {
-      const hit = hitResults[0];
-      const pose = hit.getPose(refSpace);
-      arReticle.visible = true;
-      arReticle.matrix.fromArray(pose.transform.matrix);
-    } else {
-      arReticle.visible = false;
-    }
-  }
-
-  renderer.render(scene, camera);
-}
-
-function onARSelect() {
-  const THREE = window.THREE;
-  if (towerPlaced || !arReticle.visible) return;
-
-  // Place tower at reticle position
-  const pos = new THREE.Vector3();
-  pos.setFromMatrixPosition(arReticle.matrix);
-  towerGroup.position.copy(pos);
-  towerGroup.visible = true;
-  towerPlaced = true;
-  arReticle.visible = false;
-}
-
-function onAREnd() {
-  currentXRSession = null;
-  arHitTestSource = null;
-  towerPlaced = false;
-
-  if (arReticle) {
-    scene.remove(arReticle);
-    arReticle = null;
-  }
-
-  scene.background = new THREE.Color(0xFDF6EC);
-  scene.children.forEach(c => {
-    if (c.type === 'Mesh' && c.geometry.type === 'CircleGeometry') c.visible = true;
-  });
-
-  towerGroup.position.set(0, 0, 0);
-  towerGroup.visible = true;
-
-  renderer.setAnimationLoop(animate);
 }
 
 // Enter on input
